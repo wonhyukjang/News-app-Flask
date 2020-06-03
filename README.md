@@ -6,3 +6,4 @@ Design and implement a Neural Network, Convolutional Neural Network and Data Vis
 
 # Different Emotions in the dataset
 ![screenshot](https://github.com/wonhyukjang/Face-Recognition/blob/master/faceRecognition.png)
+![](Demo.gif)
