@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" type = "text/css" href="main.css">
+<!-- <link rel="stylesheet" type="text/css" href="/static/styles.css"> -->
+
+
+</head>
+<body id="body">
+  <div id = "Page1">
+
+  <div class="oneline" style="float:left">
+    <div class="btn-group">
+        <button class = 'current' onclick="window.location.href='#'">Google News</button>
+        <button id = "search" onclick="changeToSearch()">Search</button>
+    </div>
+        
+  </div>
+  
+  <div class="secondline" style="float:left">
+    <div id="slideshow-container">
+    </div>
+  </div>
+  
+  <div class="thirdline", style="float:left">
+      <div id="my_dataviz"></div>
+  </div>
+  <hr class = "reset">
+
+  <div class = "secondlineCNN"> CNN</div>
+  <hr>
+  <div id = "cnnNews">
+  </div>
+  <div class = "secondlineFOXTitle"> Fox News</div>
+  <hr>
+  <div id = "foxNews">
+  </div>
+  <div class = "secondlineFOX"> </div>
+</div>
+<div id = "Page2" style="display:none">
+    <div class="oneline" style="float:left">
+        <div class="btn-group">
+            <button onclick="changeToGoogle()">Google News</button>
+            <button class = "current" onclick="window.location.href='#'">Search</button>
+        </div>
+            
+  </div>
+      <div class="secondline_Second">
+        <form id ="myForm" action="#" onsubmit="generateDiv(); return false;" >
+            &nbsp;&nbsp;&nbsp;
+            <label style = "font-family: Georgia, serif;" for="Keyword">Keyword*:</label>
+              <input type="text" id="Keyword" name="Keyword" required>
+            <label style = "font-family: Georgia, serif; margin-left:20px;" for="from">From *:</label>
+              <input type="date" id="from" name="trip-from" value = lastWeekDisplayPaddedReversed required>
+            <label style = "font-family: Georgia, serif;" value = today for="to">To *:</label>
+            <input type="date" id="to" name="trip-to" required>
+            <label for="category_id">Category:</label>
+            <select name = "category" id = "category_id" onclick="getSource()">
+                <option value="all">all</option>
+                <option value="business">business</option>
+                <option value="entertainment">entertainment</option>            
+                <option value="general">general</option>
+                <option value="health">health</option>
+                <option value="science">science</option>            
+                <option value="sports">sports</option>
+                <option value="technology">technology</option>                
+            </select>
+    
+            <label for="source">Source:</label>
+            <select name = "source_id" id = 'source_id'>
+              <option>all</option>
+            </select>
+            </br>
+            <button type="submit" id="buttonSearch">Search</button>
+            <button type="reset" id = "buttonClear">Clear</button>
+        </form>
+    </div>
+    <div id="card_Second">
+    </div>
+</div>
+<!-- Second Page Start -->
+<!-- Load d3.js -->
+<script src="https://d3js.org/d3.v4.js"></script>
+
+<!-- Load d3-cloud -->
+<script src="https://cdn.jsdelivr.net/gh/holtzy/D3-graph-gallery@master/LIB/d3.layout.cloud.js"></script>
+
+    <script>
+            function changeToGoogle() {
+              document.getElementById('Page1').style.display = '';
+              document.getElementById('Page2').style.display = 'none';
+            }
+            function changeToSearch() {
+              document.getElementById('Page1').style.display = 'none';
+              document.getElementById('Page2').style.display = '';
+            }
+            var queryObj;
+            var date = new Date();
+            
+            var day = date.getDate();
+            var month = date.getMonth() + 1;
+            var year = date.getFullYear();
+            
+            if (month < 10) month = "0" + month;
+            if (day < 10) day = "0" + day;
+            
+            var today = year + "-" + month + "-" + day;
+            
+            function getLastWeek() {
+              var today = new Date();
+              var lastWeek = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7);
+              return lastWeek;
+            }
+            
+            var lastWeek = getLastWeek();
+            var lastWeekMonth = lastWeek.getMonth() + 1;
+            var lastWeekDay = lastWeek.getDate();
+            var lastWeekYear = lastWeek.getFullYear();
+            
+            var lastWeekDisplay = lastWeekMonth + "/" + lastWeekDay + "/" + lastWeekYear;
+            var lastWeekDisplay = lastWeekYear + '-' + lastWeekDay + '-' + lastWeekMonth;
+            
+            var lastWeekDisplayPadded = ("00" + lastWeekMonth.toString()).slice(-2) + "-" + ("00" + lastWeekDay.toString()).slice(-2) + "-" + ("0000" + lastWeekYear.toString()).slice(-4);
+            
+            var lastWeekDisplayPaddedReversed = ("0000" + lastWeekYear.toString()).slice(-4) + "-" + "0" + lastWeekMonth.toString().slice(-2) + "-" + ("00" + (lastWeekDay).toString()).slice(-2);
+            document.getElementById('from').value = lastWeekDisplayPaddedReversed;
+            document.getElementById('to').value = today;
+                        
+            function checkForm() {
+                if(document.getElementById('Keyword').value == "") 
+                    return false;
+            
+                matchesFrom = document.getElementById('from').value.match(/\d+/g); 
+                matchFrom = matchesFrom[0] + matchesFrom[1] + matchesFrom[2]; 
+            
+                matchesTo = document.getElementById('to').value.match(/\d+/g); 
+                matchTo = matchesTo[0] + matchesTo[1] + matchesTo[2]; 
+            
+            
+                if (parseInt(matchFrom) > parseInt(matchTo)) {
+                    alert("Incorrect time");
+                    return false;
+                }
+            
+            }
+  function add3Dots(string){
+    var dots = "...";
+    returnIdx = 0
+    for(var i = 0; i < string.length; i++) {
+      if (string[i] == ' ') {
+          if(i + 4 < 58) {
+            returnIdx = i;
+          }
+          else {
+            return string.substring(0, returnIdx) + '...'
+          }
+      }    
+    }
+    return string + "..."
+  }
+
+function loadJSON(url) {
+    xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", url, false);
+
+    try {
+        xmlhttp.send();
+    }
+    catch {
+        alert("File not exists");
+        return ;
+    }
+
+    jsonObj = JSON.parse(xmlhttp.responseText);
+    return jsonObj;
+}
+
+form = document.getElementById('myForm');
+form.onreset = function () {
+    document.getElementById("from").defaultValue = lastWeekDisplayPaddedReversed;
+    document.getElementById("to").defaultValue = today;
+
+    dummy = document.getElementById('card_Second');
+    dummy.innerHTML = '';     
+    var select = document.getElementById("source_id"),
+        length = select.options.length;
+    while(length--){
+      select.remove(length);
+    }
+    var option = document.createElement('option');
+    option.innerText = "all";
+    option.value = "all";
+    document.getElementById("source_id").append(option);        
+}
+
+var loadJSONQuery = function () {
+        this.get = function (url, aCallback) {
+            var xmlhtp = new XMLHttpRequest();
+            xmlhtp.onreadystatechange = function () {
+                if (xmlhtp.readyState == 4 && xmlhtp.status == 200)
+                    aCallback(xmlhtp.responseText);
+            };
+            xmlhtp.open("GET", url, true);
+            xmlhtp.send(null);
+        }
+};
+function showArticle() {
+  button_Show = document.getElementById('button_Show');
+    if (button_Show.innerText == "Show More") {
+        if (expandArray.length > 15) {
+          for (i = 5; i < 15; i++) {
+              node = document.getElementById('card_Second').childNodes[i];
+
+              node.style.display = "inline-block";
+          }
+        }
+        else if(expandArray.length > 5 && expandArray.length <= 15) {
+          for (i = 5; i < expandArray.length; i++) {
+              node = document.getElementById('card_Second').childNodes[i];
+              node.style.display = "inline-block";
+          }
+        }
+        else {
+        }
+        button_Show.innerText = 'Show Less';
+    } else {
+        if (expandArray.length > 15) { 
+          for (i = 5; i < 15; i++) {
+              node = document.getElementById('card_Second').childNodes[i];
+              node.style.display = "none";
+          }
+        }
+        else if(expandArray.length > 5 && expandArray.length <= 15) {
+          for (i = 5; i < expandArray.length; i++) {
+              node = document.getElementById('card_Second').childNodes[i];
+              node.style.display = "none";
+          }
+        }
+        else {
+          
+        }
+        button_Show.innerText = 'Show More';
+    }
+}
+// function showElement(elementId) {
+//   document.getElementById(elementId).style.display = 'block';
+// }
+// function hideElement(elementId) {
+//   document.getElementById(elementId).style.display = 'none';
+// }
+function showElement(className, idx) {
+  document.getElementsByClassName(className)[idx].style.display = 'block';
+}
+function hideElement(className, idx) {
+  document.getElementsByClassName(className)[idx].style.display = 'none';
+}
+
+// function expandNews(i) {
+//   if (expandArray[i] == 0) {
+//       showElement('author,' + i);
+//       showElement('published_' + i);
+//       showElement('url_' + i);
+//       showElement('whole_' + i);
+//       showElement('close_' + i);
+//       showElement('source_' + i);
+//       hideElement('part_' + i);
+//       document.getElementById('element_' + i).style.cursor = 'unset';
+
+//   }
+//   expandArray[i] = 0
+// }
+
+function expandNews(i) {
+  if (expandArray[i] == 0) {
+      showElement('news_Author',i);
+      showElement('news_Published', i);
+      showElement('news_URL', i);
+      showElement('news_Whole', i);
+      showElement('close',i);
+      showElement('news_Source', i);
+      hideElement('news_Part' , i);
+      // document.getElementById('element_' + i).style.cursor = 'unset';
+      document.getElementsByClassName('news_element')[i].style.cursor = 'unset';
+
+  }
+  
+  expandArray[i] = 0
+}
+
+function closeNews(i) {
+    hideElement('news_Author', i);
+    hideElement('news_Published', i);
+    hideElement('news_URL', i);
+    hideElement('news_Whole', i);
+    hideElement('close', i);
+    hideElement('news_Source', i);
+    showElement('news_Part', i);
+
+    // document.getElementById('element_' + i).style.cursor = 'pointer';
+    document.getElementsByClassName('news_element')[i].style.cursor = 'pointer';
+
+    expandArray[i] = 1
+}
+
+function generateDiv() {
+    var category_Instance = document.getElementById('category_id');    
+    var cat_option = category_Instance.options[category_Instance.selectedIndex];
+
+    var source_Instance = document.getElementById('source_id');    
+    var source_option = source_Instance.options[source_Instance.selectedIndex];
+
+    var from = document.getElementById('from').value;
+    var to = document.getElementById('to').value;
+
+    var from_Date = new Date(from);
+    var to_Date = new Date(to);
+    if(from_Date > to_Date) {
+        alert("Incorrect time");
+    } else {
+  
+        var postVars = '/queryTo?' + 'Keyword='+ document.getElementById('Keyword').value + '&' +
+                        'trip-from='+ from + '&' +
+                        'trip-to='+ to + '&' +
+                        'category='+ cat_option.value + '&' +
+                        'source=' + source_option.value;
+        
+        var request = new loadJSONQuery();
+
+
+        request.get(postVars, function(getData){
+
+            // Empty Previous Data
+            data = document.getElementById('card_Second');
+            document.getElementById('card_Second').innerHTML = '';
+            data.style.marginBottom = '50px';
+            data.style.marginLeft = '250px';
+
+            // parse JSON
+            res = JSON.parse(getData);
+
+            // Promprt Error Message
+            if(res.mgs.length > 5) {
+                alert(res.mgs);
+            }
+
+            else {
+                // If nothing returned, return 'No results'
+                length = res.article.articles.length;
+                if (length > 15) {
+                    length = 15;
+                }
+
+                if (length == 0) {
+                    data.style.marginLeft = '570px';
+                    data.style.marginBottom = '50px';
+
+                    data.innerHTML = 'No results';
+                }
+                expandArray = new Array();
+                if (res.article != null) {
+                    for (i = 0; i < length; i++) {
+                      expandArray.push(0);
+                      element = res.article.articles[i];
+                      div_element = document.createElement('div');
+                      div_element.setAttribute('class','element');
+                      div_element.style.marginLeft = '45px';
+                      div_element.setAttribute('onclick',"expandNews("+i+")");
+
+                      // Display none so that it doesn't show more than 5 elements
+                      if (i > 4) {
+                        div_element.style.display = 'none';
+                      }
+                      
+                      img = document.createElement('img');
+                      img.src = element['urlToImage'];
+                      img.setAttribute('class','img_element');
+                      img.setAttribute('width','100px');
+                      img.setAttribute('height','100px');
+ 
+                      div_element.append(img);
+
+                      // Make News
+                      news = document.createElement('div');
+                      news.setAttribute('class','news_element');
+
+                      // Make News title
+                      title = document.createElement('p');
+                      title.innerHTML = '<b style="font-size:20px;">' + element['title'] + '</b><br>'
+                      title.setAttribute('class','news_title');
+
+                      news.append(title);
+
+                      // Make News author
+                      author = document.createElement('p');
+                      author.innerHTML = '<b>Author: </b>' + element['author'];
+                      author.setAttribute('class','news_Author');
+                      author.style.display = 'none';
+                      news.append(author);
+
+                      // Make News Source
+                      source = document.createElement('p');
+                      source.style.display = 'none';
+                      source.setAttribute("class",'news_Source');
+
+                      source.innerHTML = '<b>Source: </b>' + element['source']['name'];
+                      news.append(source);
+
+                      // Make News date
+                      published = document.createElement('p');
+                      published.style.display = 'none';
+                      published.setAttribute('class','news_Published');
+                      published.innerHTML = '<b>Date: </b>' + element['publishedAt'];
+                      news.append(published);
+
+                      // Make News Whole
+                      whole = document.createElement('p');
+                      whole.style.display = 'none';
+                      whole.setAttribute("class","news_Whole");
+                      whole.innerHTML = element['description'];
+                      news.append(whole);
+
+                      // Make News Part
+                      part = document.createElement('p');
+                      part.innerHTML = add3Dots(element['description']);
+                      part.setAttribute("class","news_Part");
+                      news.append(part);
+
+                      // Make News URL
+                      url = document.createElement('a');
+                      url.setAttribute('class',"news_URL");
+                      url.setAttribute('style', 'margin-top:10px; display: none;');
+                      url.target = '_blank';
+
+                      url.href = element.url;
+                      url.innerText = 'See Original Post';
+                      news.append(url);
+                      div_element.append(news);
+
+                      close = document.createElement('span');
+                      close.setAttribute("class","close");
+                      close.setAttribute('onclick', 'closeNews('+i+ ');');
+                      close.style.display = 'none';
+                      div_element.append(close);
+                      data.append(div_element);
+
+                    }
+
+                    if (length > 5) {
+                        button_div = document.createElement('div');
+                        button_div.setAttribute("class","containers")
+
+                        button_Show = document.createElement('button');
+                        button_Show.setAttribute("id","button_Show");
+                        button_Show.setAttribute("class","button_Show");
+
+                        button_Show.setAttribute("onclick", "showArticle()");
+
+                        button_Show.innerText = 'Show More';
+
+                        button_div.append(button_Show);
+                        data.append(button_div)
+                    }
+                }
+            }
+          });
+        }
+  }
+// getSource(false);
+
+
+function getSource(set) {
+    var category;
+    if(set == true) {
+        category = 'all'
+    }
+    else {
+      category = document.getElementById('category_id').options[document.getElementById('category_id').selectedIndex].value;
+    }
+
+    var open = new loadJSONQuery();
+
+    var select = document.getElementById("source_id"),
+        length = select.options.length;
+    while(length--){
+      select.remove(length);
+    }
+    queryURL = '/querySource?' + 'category=' + category;
+
+    open.get(queryURL, function (response) {
+        categoryList = JSON.parse(response);
+        for(var i = 0; i < categoryList.length; i++) {
+          if (i < 10) {
+            var option = document.createElement('option');
+            option.innerText = categoryList[i].source_Name;
+            option.value = categoryList[i].source;
+            document.getElementById("source_id").append(option);
+          } 
+          else {
+            break;
+          }
+        // Select First Index as default
+        document.getElementById("source_id").options.selectedIndex = 0;
+        }
+    });
+  }
+
+function load_Word_JSON(url) {
+    xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", url, false);
+
+    try {
+        xmlhttp.send();
+    }
+    catch {
+        alert("File not exists");
+        return ;
+    }
+
+    jsonObj = JSON.stringify(xmlhttp.responseText);
+    return jsonObj;
+}
+var count = 1;
+
+function generateGoogleHTML(jsonObj) {
+    news = jsonObj.articles;
+    console.log("Length News:", news.length);
+    html_text = "";
+    if(news == null || news.length == 0) {
+        alert("Empty Rows");    
+    }
+    else {
+        for(i = 0; i < news.length; i++) {
+            console.log(news[i].author);
+            html_text +="<a href = '" + news[i].url + "' target = '_blank'>" +  
+                        "<div class = 'mySlides fade'>" +
+                        "<img src = '" + news[i].urlToImage + "'" + " " + 
+                        "style = 'width: 450px; height: 300px;'>" + 
+                        "<div class='text'>" +
+                        "<div class='headers'>" + news[i].title + "</div>" +
+                        news[i].description + "</div></div></a>";
+            if (i == 4)
+                break;
+        }
+
+        console.log(html_text);
+        return html_text;
+    }
+}
+function openWindow(link) {
+    window.open(link, "mywindow");
+}
+
+function generateCNNHTML(jsonObj) {
+    news = jsonObj.articles;
+    html_text = "";
+    if(news == null || news.length == 0) {
+        alert("Empty Rows");    
+    }
+    else {
+        for(i = 0; i < news.length; i++) {
+            console.log(news[i].author);
+            html_text += "<a href = '" + news[i].url + "' target = '_blank'>" +
+                        "<div class = 'card' >" +
+                        "<img src = '" + news[i].urlToImage + "'" + " " +
+                        "id = 'example4' width: 100%>" +
+                        "<div class = 'container' >" +
+                        "<b id = 'title'>" + news[i].title + "</b>" + 
+                        "<p class = 'pro'>" + news[i].description + "</p></div></div>"
+                        + "</a>";
+            if (i == 3)
+                break;
+        }
+
+        return html_text;
+    }
+}
+
+googleObj = loadJSON('/google');
+foxObj = loadJSON('/fox');
+cnnObj = loadJSON('/cnn');
+wordCloudObj = loadJSON('/stopWord');
+// queryObj = loadJSON(responseQuery);
+var queryObj;
+var button = document.getElementById('buttonSearch');
+
+
+function showSlides() {
+  var i;
+  var slides = document.getElementsByClassName("mySlides");
+  // var dots = document.getElementsByClassName("dot");
+  
+  for (i = 0; i < slides.length; i++) {
+    slides[i].style.display = "none";  
+  }
+  slideIndex++;
+  if (slideIndex > slides.length) {slideIndex = 1}    
+  // for (i = 0; i < dots.length; i++) {
+  //   dots[i].className = dots[i].className.replace(" active", "");
+  // }
+  slides[slideIndex-1].style.display = "block";  
+  // dots[slideIndex-1].className += " active";
+  setTimeout(showSlides, 10000); // Change image every 2 seconds
+}
+
+function wordCount(wordCloudObj) {
+  var i;
+  var myWords = []
+  var scale = 0;
+
+  for (i = 0; i < wordCloudObj.length; i++) {
+      dum = {}
+      dum['word'] = wordCloudObj[i].word; 
+      dum['size'] = wordCloudObj[i].count;
+      console.log(dum);
+      myWords[i] = dum;
+  }
+  return myWords
+}
+    
+console.log(googleObj);
+console.log(wordCloudObj);
+console.log(wordCloudObj[0]);
+
+document.getElementById("slideshow-container").innerHTML += generateGoogleHTML(googleObj);
+document.getElementById("cnnNews").innerHTML += generateCNNHTML(cnnObj);
+document.getElementById("foxNews").innerHTML += generateCNNHTML(foxObj);
+
+var elmnt2 = document.getElementsByClassName("container");
+
+var max = 0;
+for (i=0; i < elmnt2.length; i++) {
+	if (elmnt2[i].offsetHeight > max) {
+    	max = elmnt2[i].offsetHeight;
+    }
+}
+
+for (i = 0; i < elmnt2.length; i++) {
+    elmnt2[i].style.height = max + "px";
+}
+var slideIndex = 0;
+showSlides();
+
+myWords = wordCount(wordCloudObj);
+console.log(myWords);
+
+// set the dimensions and margins of the graph
+var margin = {top: 10, right: 10, bottom: 10, left: 20},
+    width = 350 - margin.left - margin.right,
+    height = 350 - margin.top - margin.bottom;
+    width = 280
+    height = 280
+// append the svg object to the body of the page
+var svg = d3.select("#my_dataviz").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .attr("class", "graph-svg-component")
+  .append("g")
+    .attr("transform",
+          "translate(" + margin.left + "," + margin.top + ")")
+
+// Constructs a new cloud layout instance. It run an algorithm to find the position of words that suits your requirements
+// Wordcloud features that are different from one word to the other must be here
+var layout = d3.layout.cloud()
+  .size([250, 250])
+  .words(myWords.map(function(d) { return {text: d.word, size:d.size}; }))
+  .padding(4)        //space between words
+  .rotate(function() { return ~~(Math.random() * 2) * 90; })
+  .fontSize(function(d) { return d.size + 10; })      // font size of words
+  .on("end", draw);
+layout.start();
+
+// This function takes the output of 'layout' above and draw the words
+// Wordcloud features that are THE SAME from one word to the other can be here
+function draw(words) {
+  svg
+    .append("g")
+      .attr("transform", "translate(" + layout.size()[0] / 2 + "," + layout.size()[1] / 2 + ")")
+      .selectAll("text")
+        .data(words)
+      .enter().append("text")
+        .style("font-size", function(d) { return d.size + "px"; })
+        .style("fill", "black")
+        .attr("text-anchor", "middle")
+        .style("font-family", "Impact")
+        .attr("transform", function(d) {
+          return "translate(" + [d.x, d.y] + ")rotate(" + d.rotate + ")";
+        })
+        .text(function(d) { return d.text; });
+}
+</script>
+</body>
+</html>
